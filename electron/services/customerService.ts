@@ -1,0 +1,332 @@
+import { getDb } from '../database/connection';
+import { Customer, Loan, JewelleryItem, LoanTransaction, CustomerProfileData } from '../types';
+import { CryptoService } from './cryptoService';
+import { SettingService } from './settingService';
+import { AuditService } from './auditService';
+
+export type { CustomerProfileData };
+
+export class CustomerService {
+  /**
+   * Creates a new customer with encrypted Aadhaar and masked storage
+   */
+  static createCustomer(
+    data: {
+      full_name: string;
+      phone: string;
+      alternate_phone?: string;
+      aadhaar_number: string;
+      address: string;
+      city: string;
+      state: string;
+      pincode: string;
+      remarks?: string;
+    },
+    userId: string,
+    username: string
+  ): Customer {
+    const db = getDb();
+    const id = SettingService.generateNextId('CUSTOMER');
+    const now = new Date().toISOString();
+
+    const cleanAadhaar = (data.aadhaar_number || '').replace(/\D/g, '');
+    let encAadhaar = null;
+    let iv = null;
+    let tag = null;
+    let last4 = '0000';
+
+    if (cleanAadhaar) {
+      const encryptedObj = CryptoService.encryptAadhaar(cleanAadhaar);
+      encAadhaar = encryptedObj.encrypted;
+      iv = encryptedObj.iv;
+      tag = encryptedObj.tag;
+      last4 = cleanAadhaar.slice(-4);
+    }
+
+    const stmt = db.prepare(`
+      INSERT INTO customers (
+        id, full_name, phone, alternate_phone,
+        aadhaar_encrypted, aadhaar_iv, aadhaar_tag, aadhaar_last4,
+        address, city, state, pincode, remarks,
+        created_by, created_at, updated_at, is_deleted
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    `);
+
+    stmt.run(
+      id,
+      data.full_name.trim(),
+      data.phone.trim(),
+      data.alternate_phone ? data.alternate_phone.trim() : null,
+      encAadhaar,
+      iv,
+      tag,
+      last4,
+      data.address.trim(),
+      data.city.trim(),
+      data.state.trim(),
+      data.pincode.trim(),
+      data.remarks ? data.remarks.trim() : null,
+      username,
+      now,
+      now
+    );
+
+    AuditService.log(
+      userId,
+      username,
+      'CREATE_CUSTOMER',
+      'CUSTOMERS',
+      id,
+      undefined,
+      { id, full_name: data.full_name, phone: data.phone },
+      'Customer registered'
+    );
+
+    return this.getCustomerById(id)!;
+  }
+
+  /**
+   * Retrieves a customer by ID with masked Aadhaar
+   */
+  static getCustomerById(id: string): Customer | null {
+    const db = getDb();
+    const row = db.prepare(`
+      SELECT * FROM customers WHERE id = ? AND is_deleted = 0
+    `).get(id) as any;
+
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      full_name: row.full_name,
+      phone: row.phone,
+      alternate_phone: row.alternate_phone || undefined,
+      aadhaar_last4: row.aadhaar_last4,
+      address: row.address,
+      city: row.city,
+      state: row.state,
+      pincode: row.pincode,
+      remarks: row.remarks || undefined,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      created_by: row.created_by,
+    };
+  }
+
+  /**
+   * Retrieves full unmasked Aadhaar only for authorized roles with audit log
+   */
+  static getUnmaskedAadhaar(customerId: string, userId: string, username: string, userRole: string): string {
+    if (userRole !== 'OWNER') {
+      throw new Error('Access Denied: Only Owner is permitted to unmask full Aadhaar number.');
+    }
+
+    const db = getDb();
+    const row = db.prepare(`
+      SELECT aadhaar_encrypted, aadhaar_iv, aadhaar_tag FROM customers WHERE id = ? AND is_deleted = 0
+    `).get(customerId) as any;
+
+    if (!row || !row.aadhaar_encrypted || !row.aadhaar_iv || !row.aadhaar_tag) {
+      return '';
+    }
+
+    const fullAadhaar = CryptoService.decryptAadhaar(row.aadhaar_encrypted, row.aadhaar_iv, row.aadhaar_tag);
+
+    AuditService.log(
+      userId,
+      username,
+      'VIEW_SENSITIVE_AADHAAR',
+      'CUSTOMERS',
+      customerId,
+      undefined,
+      undefined,
+      'Unmasked full Aadhaar for viewing'
+    );
+
+    return fullAadhaar;
+  }
+
+  /**
+   * Updates an existing customer profile
+   */
+  static updateCustomer(
+    id: string,
+    data: Partial<{
+      full_name: string;
+      phone: string;
+      alternate_phone?: string;
+      address: string;
+      city: string;
+      state: string;
+      pincode: string;
+      remarks?: string;
+    }>,
+    userId: string,
+    username: string
+  ): Customer {
+    const db = getDb();
+    const current = this.getCustomerById(id);
+    if (!current) throw new Error('Customer not found');
+
+    const now = new Date().toISOString();
+
+    const stmt = db.prepare(`
+      UPDATE customers SET
+        full_name = COALESCE(?, full_name),
+        phone = COALESCE(?, phone),
+        alternate_phone = COALESCE(?, alternate_phone),
+        address = COALESCE(?, address),
+        city = COALESCE(?, city),
+        state = COALESCE(?, state),
+        pincode = COALESCE(?, pincode),
+        remarks = COALESCE(?, remarks),
+        updated_at = ?
+      WHERE id = ?
+    `);
+
+    stmt.run(
+      data.full_name || null,
+      data.phone || null,
+      data.alternate_phone !== undefined ? data.alternate_phone : null,
+      data.address || null,
+      data.city || null,
+      data.state || null,
+      data.pincode || null,
+      data.remarks !== undefined ? data.remarks : null,
+      now,
+      id
+    );
+
+    AuditService.log(
+      userId,
+      username,
+      'UPDATE_CUSTOMER',
+      'CUSTOMERS',
+      id,
+      current,
+      data,
+      'Updated customer details'
+    );
+
+    return this.getCustomerById(id)!;
+  }
+
+  /**
+   * Searches customers by Name, Phone, ID, Last 4 digits of Aadhaar, or Loan ID
+   */
+  static searchCustomers(query: string, limit = 50, offset = 0): { customers: Customer[]; total: number } {
+    const db = getDb();
+    const trimmed = (query || '').trim();
+
+    let sql = `
+      SELECT c.*,
+        (SELECT COUNT(*) FROM loans l WHERE l.customer_id = c.id AND l.status IN ('ACTIVE', 'PARTIALLY_PAID', 'OVERDUE')) as active_loans_count,
+        (SELECT COALESCE(SUM(l.principal_outstanding_paise + l.interest_outstanding_paise), 0) FROM loans l WHERE l.customer_id = c.id AND l.status IN ('ACTIVE', 'PARTIALLY_PAID', 'OVERDUE')) as total_outstanding_paise
+      FROM customers c
+      WHERE c.is_deleted = 0
+    `;
+    let countSql = `SELECT COUNT(*) as count FROM customers c WHERE c.is_deleted = 0`;
+    const params: any[] = [];
+    const countParams: any[] = [];
+
+    if (trimmed) {
+      const condition = `
+        AND (
+          c.full_name LIKE ?
+          OR c.phone LIKE ?
+          OR c.id LIKE ?
+          OR c.aadhaar_last4 LIKE ?
+          OR EXISTS (SELECT 1 FROM loans l WHERE l.customer_id = c.id AND l.id LIKE ?)
+        )
+      `;
+      sql += condition;
+      countSql += condition;
+      const searchPattern = `%${trimmed}%`;
+      params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+      countParams.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+    }
+
+    sql += ' ORDER BY c.created_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const totalRow = db.prepare(countSql).get(...countParams) as { count: number };
+    const rows = db.prepare(sql).all(...params) as any[];
+
+    const customers: Customer[] = rows.map((row) => ({
+      id: row.id,
+      full_name: row.full_name,
+      phone: row.phone,
+      alternate_phone: row.alternate_phone || undefined,
+      aadhaar_last4: row.aadhaar_last4,
+      address: row.address,
+      city: row.city,
+      state: row.state,
+      pincode: row.pincode,
+      remarks: row.remarks || undefined,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      created_by: row.created_by,
+      active_loans_count: row.active_loans_count || 0,
+      total_outstanding_paise: row.total_outstanding_paise || 0,
+    }));
+
+    return {
+      customers,
+      total: totalRow ? totalRow.count : 0,
+    };
+  }
+
+  /**
+   * Comprehensive customer profile with active loans, closed loans, repayments, and pledged jewellery
+   */
+  static getCustomerProfile(customerId: string): CustomerProfileData | null {
+    const customer = this.getCustomerById(customerId);
+    if (!customer) return null;
+
+    const db = getDb();
+
+    const loans = db.prepare(`
+      SELECT * FROM loans WHERE customer_id = ? ORDER BY loan_date DESC
+    `).all(customerId) as Loan[];
+
+    const activeLoans = loans.filter((l) => ['ACTIVE', 'PARTIALLY_PAID', 'OVERDUE'].includes(l.status));
+    const closedLoans = loans.filter((l) => l.status === 'CLOSED');
+
+    const totalPrincipalOutstanding = activeLoans.reduce((sum, l) => sum + (l.principal_outstanding_paise || 0), 0);
+    const totalInterestOutstanding = activeLoans.reduce((sum, l) => sum + (l.interest_outstanding_paise || 0), 0);
+
+    const repaymentsRow = db.prepare(`
+      SELECT COALESCE(SUM(p.total_amount_paise), 0) as total_repayments
+      FROM payments p
+      INNER JOIN loans l ON p.loan_id = l.id
+      WHERE l.customer_id = ?
+    `).get(customerId) as { total_repayments: number };
+
+    // Get pledged jewellery items
+    const pledgedItems = db.prepare(`
+      SELECT i.* FROM loan_items i
+      INNER JOIN loans l ON i.loan_id = l.id
+      WHERE l.customer_id = ? AND i.status = 'PLEDGED'
+      ORDER BY i.created_at DESC
+    `).all(customerId) as JewelleryItem[];
+
+    // Get recent transactions
+    const recentTx = db.prepare(`
+      SELECT t.* FROM loan_transactions t
+      INNER JOIN loans l ON t.loan_id = l.id
+      WHERE l.customer_id = ?
+      ORDER BY t.transaction_date DESC LIMIT 20
+    `).all(customerId) as LoanTransaction[];
+
+    return {
+      customer,
+      active_loans: activeLoans,
+      closed_loans: closedLoans,
+      total_principal_outstanding_paise: totalPrincipalOutstanding,
+      total_interest_outstanding_paise: totalInterestOutstanding,
+      total_repayments_paise: repaymentsRow ? repaymentsRow.total_repayments : 0,
+      pledged_items: pledgedItems,
+      recent_transactions: recentTx,
+    };
+  }
+}

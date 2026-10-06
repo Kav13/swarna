@@ -1,0 +1,56 @@
+[2026-10-03T11:32:17.922Z] Electron app.whenReady fired
+[2026-10-03T11:44:19.880Z] Electron app.whenReady fired
+[2026-10-03T11:44:19.893Z] initDatabase succeeded
+[2026-10-03T11:44:19.894Z] registerIpcHandlers succeeded
+[2026-10-03T11:44:19.947Z] createWindow succeeded
+[2026-10-03T11:45:41.594Z] Electron app.whenReady fired
+[2026-10-03T11:45:41.610Z] initDatabase succeeded
+[2026-10-03T11:45:41.611Z] registerIpcHandlers succeeded
+[2026-10-03T11:45:41.650Z] createWindow succeeded
+[2026-10-03T11:48:26.866Z] Electron app.whenReady fired
+[2026-10-03T11:48:26.872Z] initDatabase succeeded
+[2026-10-03T11:48:26.873Z] registerIpcHandlers succeeded
+[2026-10-03T11:48:26.921Z] createWindow succeeded
+[2026-10-03T11:49:44.534Z] Electron app.whenReady fired
+[2026-10-03T11:49:44.543Z] initDatabase succeeded
+[2026-10-03T11:49:44.543Z] registerIpcHandlers succeeded
+[2026-10-03T11:49:44.586Z] createWindow succeeded
+[2026-10-03T11:58:35.339Z] Electron app.whenReady fired
+[2026-10-03T11:58:35.344Z] initDatabase succeeded
+[2026-10-03T11:58:35.344Z] registerIpcHandlers succeeded
+[2026-10-03T11:58:35.388Z] createWindow succeeded
+[2026-10-03T12:01:27.755Z] window-all-closed event
+[2026-10-03T12:01:48.255Z] Electron app.whenReady fired
+[2026-10-03T12:01:48.260Z] initDatabase succeeded
+[2026-10-03T12:01:48.261Z] registerIpcHandlers succeeded
+[2026-10-03T12:01:48.304Z] createWindow succeeded
+[2026-10-03T12:08:34.712Z] window-all-closed event
+[2026-10-03T12:14:09.703Z] Electron app.whenReady fired
+[2026-10-03T12:14:09.708Z] initDatabase succeeded
+[2026-10-03T12:14:09.709Z] registerIpcHandlers succeeded
+[2026-10-03T12:14:09.756Z] createWindow succeeded
+[2026-10-03T12:20:54.014Z] window-all-closed event
+[2026-10-03T12:38:58.571Z] Electron app.whenReady fired
+[2026-10-03T12:38:58.576Z] initDatabase succeeded
+[2026-10-03T12:38:58.577Z] registerIpcHandlers succeeded
+[2026-10-03T12:38:58.624Z] createWindow succeeded
+[2026-10-03T17:22:41.637Z] window-all-closed event
+[2026-10-03T17:56:07.926Z] Electron app.whenReady fired
+[2026-10-03T17:56:07.934Z] initDatabase succeeded
+[2026-10-03T17:56:07.935Z] registerIpcHandlers succeeded
+[2026-10-03T17:56:07.979Z] createWindow succeeded
+[2026-10-03T18:03:55.585Z] window-all-closed event
+[2026-10-03T18:04:11.314Z] Electron app.whenReady fired
+[2026-10-03T18:04:11.319Z] initDatabase succeeded
+[2026-10-03T18:04:11.320Z] registerIpcHandlers succeeded
+[2026-10-03T18:04:11.372Z] createWindow succeeded
+[2026-10-03T18:23:42.610Z] Electron app.whenReady fired
+[2026-10-03T18:23:42.615Z] initDatabase succeeded
+[2026-10-03T18:23:42.616Z] registerIpcHandlers succeeded
+[2026-10-03T18:23:42.659Z] createWindow succeeded
+[2026-10-03T18:28:08.928Z] window-all-closed event
+[2026-10-05T11:52:08.799Z] Electron app.whenReady fired
+[2026-10-05T11:52:08.871Z] initDatabase succeeded
+[2026-10-05T11:52:08.872Z] registerIpcHandlers succeeded
+[2026-10-05T11:52:09.030Z] createWindow succeeded
+[2026-10-05T12:01:37.148Z] window-all-closed event
