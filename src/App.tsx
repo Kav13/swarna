@@ -34,6 +34,7 @@ export const App: React.FC = () => {
   // Repayment Modal
   const [repaymentModalOpen, setRepaymentModalOpen] = useState<boolean>(false);
   const [repaymentTargetLoanId, setRepaymentTargetLoanId] = useState<string>('');
+  const [loanRefreshTrigger, setLoanRefreshTrigger] = useState<number>(0);
 
   // Print Modal
   const [printModalOpen, setPrintModalOpen] = useState<boolean>(false);
@@ -90,8 +91,8 @@ export const App: React.FC = () => {
     }
   };
 
-  const handlePrintPaymentReceipt = async (paymentId: string) => {
-    const targetLid = selectedLoanId || repaymentTargetLoanId;
+  const handlePrintPaymentReceipt = async (paymentId: string, loanId?: string) => {
+    const targetLid = loanId || selectedLoanId || repaymentTargetLoanId;
     if (window.api && targetLid) {
       const pays = await window.api.payments.getPaymentsByLoanId(targetLid);
       const p = pays.find((item: any) => item.id === paymentId);
@@ -179,6 +180,7 @@ export const App: React.FC = () => {
 
           {activeTab === 'customer-profile' && (
             <CustomerProfileView
+              key={`${selectedCustomerId}_${loanRefreshTrigger}`}
               customerId={selectedCustomerId}
               onBack={() => setActiveTab('customers')}
               onSelectLoan={(lid) => {
@@ -239,14 +241,16 @@ export const App: React.FC = () => {
 
           {activeTab === 'loan-details' && (
             <LoanDetailsView
+              key={`${selectedLoanId}_${loanRefreshTrigger}`}
               loanId={selectedLoanId}
+              refreshTrigger={loanRefreshTrigger}
               onBack={() => setActiveTab('loans')}
               onRecordPayment={(lid) => {
                 setRepaymentTargetLoanId(lid);
                 setRepaymentModalOpen(true);
               }}
               onPrintPledgeReceipt={handlePrintPledgeReceipt}
-              onPrintPaymentReceipt={handlePrintPaymentReceipt}
+              onPrintPaymentReceipt={(pid) => handlePrintPaymentReceipt(pid, selectedLoanId)}
               onPrintClosureReceipt={handlePrintClosureReceipt}
               onSelectCustomer={(cid) => {
                 setSelectedCustomerId(cid);
@@ -295,10 +299,9 @@ export const App: React.FC = () => {
         isOpen={repaymentModalOpen}
         onClose={() => setRepaymentModalOpen(false)}
         preselectedLoanId={repaymentTargetLoanId}
-        onPaymentSuccess={(paymentId, isClosed) => {
-          if (repaymentTargetLoanId) {
-            handlePrintPaymentReceipt(paymentId);
-          }
+        onPaymentSuccess={(paymentId, isClosed, paidLoanId) => {
+          setLoanRefreshTrigger((prev) => prev + 1);
+          handlePrintPaymentReceipt(paymentId, paidLoanId);
         }}
       />
 

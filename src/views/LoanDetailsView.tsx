@@ -32,6 +32,7 @@ interface LoanDetailsViewProps {
   onPrintPaymentReceipt: (paymentId: string) => void;
   onPrintClosureReceipt: (loanId: string) => void;
   onSelectCustomer: (customerId: string) => void;
+  refreshTrigger?: number;
 }
 
 export const LoanDetailsView: React.FC<LoanDetailsViewProps> = ({
@@ -42,6 +43,7 @@ export const LoanDetailsView: React.FC<LoanDetailsViewProps> = ({
   onPrintPaymentReceipt,
   onPrintClosureReceipt,
   onSelectCustomer,
+  refreshTrigger,
 }) => {
   const { isOwner } = useAuth();
   const [loan, setLoan] = useState<Loan | null>(null);
@@ -87,7 +89,7 @@ export const LoanDetailsView: React.FC<LoanDetailsViewProps> = ({
 
   useEffect(() => {
     fetchLoanData();
-  }, [loanId]);
+  }, [loanId, refreshTrigger]);
 
   const handleReverseTx = async () => {
     if (!reversalReason.trim()) {
@@ -450,61 +452,80 @@ export const LoanDetailsView: React.FC<LoanDetailsViewProps> = ({
 
       {/* Tab 4: Repayments History */}
       {activeTab === 'payments' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-xs">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[11px]">
-                <th className="py-3 px-4">Receipt No</th>
-                <th className="py-3 px-4">Payment Date</th>
-                <th className="py-3 px-4 text-right">Total Paid</th>
-                <th className="py-3 px-4 text-right">Interest Covered</th>
-                <th className="py-3 px-4 text-right">Principal Cleared</th>
-                <th className="py-3 px-4">Payment Mode</th>
-                <th className="py-3 px-4 text-center">Printed By</th>
-                <th className="py-3 px-4 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {payments.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
-                    No repayments recorded yet for this loan.
-                  </td>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Repayment Records</h3>
+              <p className="text-[11px] text-slate-500">History of all repayments and receipts issued for this loan.</p>
+            </div>
+            {loan.status !== 'CLOSED' && (
+              <Button
+                size="sm"
+                variant="gold"
+                icon={<Receipt className="w-3.5 h-3.5" />}
+                onClick={() => onRecordPayment(loan.id)}
+              >
+                Record Repayment
+              </Button>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-xs">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[11px]">
+                  <th className="py-3 px-4">Receipt No</th>
+                  <th className="py-3 px-4">Payment Date</th>
+                  <th className="py-3 px-4 text-right">Total Paid</th>
+                  <th className="py-3 px-4 text-right">Interest Covered</th>
+                  <th className="py-3 px-4 text-right">Principal Cleared</th>
+                  <th className="py-3 px-4">Payment Mode</th>
+                  <th className="py-3 px-4 text-center">Printed By</th>
+                  <th className="py-3 px-4 text-center">Action</th>
                 </tr>
-              ) : (
-                payments.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50">
-                    <td className="py-3 px-4 font-mono font-bold text-slate-900">{p.receipt_no}</td>
-                    <td className="py-3 px-4 font-mono">{formatDate(p.payment_date)}</td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
-                      {formatINR(p.total_amount_paise)}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono text-amber-800">
-                      {formatINR(p.interest_paid_paise)}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-semibold text-slate-900">
-                      {formatINR(p.principal_paid_paise)}
-                    </td>
-                    <td className="py-3 px-4 font-medium text-slate-700">{p.payment_mode}</td>
-                    <td className="py-3 px-4 text-center text-slate-500 font-mono text-[11px]">
-                      {p.created_by}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="py-1 px-2.5 text-[11px]"
-                        icon={<Printer className="w-3 h-3" />}
-                        onClick={() => onPrintPaymentReceipt(p.id)}
-                      >
-                        Reprint Receipt
-                      </Button>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {payments.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-slate-400">
+                      No repayments recorded yet for this loan.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  payments.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-50">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-900">{p.receipt_no}</td>
+                      <td className="py-3 px-4 font-mono">{formatDate(p.payment_date)}</td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
+                        {formatINR(p.total_amount_paise)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-amber-800">
+                        {formatINR(p.interest_paid_paise)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-semibold text-slate-900">
+                        {formatINR(p.principal_paid_paise)}
+                      </td>
+                      <td className="py-3 px-4 font-medium text-slate-700">{p.payment_mode}</td>
+                      <td className="py-3 px-4 text-center text-slate-500 font-mono text-[11px]">
+                        {p.created_by}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="py-1 px-2.5 text-[11px]"
+                          icon={<Printer className="w-3 h-3" />}
+                          onClick={() => onPrintPaymentReceipt(p.id)}
+                        >
+                          Reprint Receipt
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

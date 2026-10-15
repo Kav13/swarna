@@ -40,7 +40,7 @@
     "build:renderer": "tsc -b && vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
     "build": "npm run build:renderer && npm run build:electron",
-    "test": "vitest run",
+    "test": "vitest run --fileParallelism=false tests/",
     "dist": "npm run build && electron-builder --win",
     "dist:dir": "npm run build && electron-builder --win --dir"
   },
