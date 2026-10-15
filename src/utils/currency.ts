@@ -51,6 +51,57 @@ export function paiseToRupees(paise: number): number {
 }
 
 /**
+ * Clean redundant leading zeros from input strings (e.g. "0200" -> "200", "01000000" -> "1000000")
+ * while preserving "0" and "0.x".
+ */
+export function cleanLeadingZeros(val: string): string {
+  if (!val) return '';
+  const trimmed = val.trim();
+  if (/^0+$/.test(trimmed)) return '0';
+  if (/^0\./.test(trimmed)) return trimmed;
+  return trimmed.replace(/^0+(?=\d)/, '');
+}
+
+/**
+ * Format any numeric value or string according to the Indian numbering system:
+ * e.g. 1000 -> "1,000", 100000 -> "1,00,000", 1000000 -> "10,00,000", 1234567.50 -> "12,34,567.50"
+ */
+export function formatIndianNumber(val: number | string | null | undefined): string {
+  if (val === null || val === undefined || val === '') return '';
+  const str = String(val).replace(/,/g, '').trim();
+  if (!str || isNaN(Number(str))) return str;
+
+  const [integerPart, decimalPart] = str.split('.');
+  const isNegative = integerPart.startsWith('-');
+  const cleanInt = isNegative ? integerPart.slice(1) : integerPart;
+
+  let lastThree = cleanInt.slice(-3);
+  const otherNumbers = cleanInt.slice(0, -3);
+  if (otherNumbers !== '') {
+    lastThree = ',' + lastThree;
+  }
+  const formattedInt = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + lastThree;
+  const prefix = isNegative ? '-' : '';
+
+  if (decimalPart !== undefined) {
+    return `${prefix}${formattedInt}.${decimalPart}`;
+  }
+  return `${prefix}${formattedInt}`;
+}
+
+/**
+ * Parse a potentially Indian-formatted string (with commas or currency symbols) into a float or null.
+ */
+export function parseIndianNumber(val: string | number | null | undefined): number | null {
+  if (val === null || val === undefined || val === '') return null;
+  if (typeof val === 'number') return isNaN(val) ? null : val;
+  const clean = val.replace(/[₹,\s]/g, '');
+  if (!clean) return null;
+  const num = parseFloat(clean);
+  return isNaN(num) ? null : num;
+}
+
+/**
  * Format weights in grams with 3 decimal precision
  */
 export function formatWeight(grams: number): string {

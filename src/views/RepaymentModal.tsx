@@ -12,6 +12,7 @@ import { formatINR } from '../utils/currency';
 import { getTodayISO } from '../utils/dates';
 import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
+import { CurrencyInput } from '../components/common/CurrencyInput';
 import { api } from '../api';
 
 interface RepaymentModalProps {
@@ -257,14 +258,12 @@ export const RepaymentModal: React.FC<RepaymentModalProps> = ({
                 <label className="block font-medium text-slate-700 mb-1">
                   Payment Amount Received (₹) *
                 </label>
-                <input
-                  type="number"
-                  step="1"
+                <CurrencyInput
                   required
                   autoFocus
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold text-sm focus:outline-none focus:border-amber-500"
-                  value={paymentAmountRupees || ''}
-                  onChange={(e) => setPaymentAmountRupees(parseFloat(e.target.value) || 0)}
+                  value={paymentAmountRupees}
+                  onChange={(val) => setPaymentAmountRupees(val)}
                   placeholder="Enter amount"
                 />
               </div>

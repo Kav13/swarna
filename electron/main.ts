@@ -355,23 +355,27 @@ function registerIpcHandlers(): void {
         },
       });
 
-      try {
-        const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`;
-        await pdfWindow.loadURL(dataUrl);
+      const tempHtmlPath = path.join(
+        app.getPath('temp'),
+        `receipt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.html`
+      );
+      fs.writeFileSync(tempHtmlPath, htmlContent, 'utf8');
 
-        // Wait a moment for DOM rendering and font layout
-        await new Promise((resolve) => setTimeout(resolve, 350));
+      try {
+        await pdfWindow.loadFile(tempHtmlPath);
+
+        // Wait for fonts, layout, and rendering to complete
+        await pdfWindow.webContents.executeJavaScript(
+          'document.fonts ? document.fonts.ready : Promise.resolve()'
+        );
+        await new Promise((resolve) => setTimeout(resolve, 400));
 
         const pdfBuffer = await pdfWindow.webContents.printToPDF({
           printBackground: true,
           pageSize: 'A4',
           preferCSSPageSize: true,
           margins: {
-            marginType: 'custom',
-            top: 0.3,
-            bottom: 0.3,
-            left: 0.3,
-            right: 0.3,
+            marginType: 'none',
           },
         });
 
@@ -390,6 +394,11 @@ function registerIpcHandlers(): void {
         if (!pdfWindow.isDestroyed()) {
           pdfWindow.destroy();
         }
+        try {
+          if (fs.existsSync(tempHtmlPath)) {
+            fs.unlinkSync(tempHtmlPath);
+          }
+        } catch {}
       }
     }
   );

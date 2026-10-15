@@ -19,6 +19,8 @@ import { formatINR, formatWeight } from '../utils/currency';
 import { getTodayISO, addMonths } from '../utils/dates';
 import { formatItemMaterial } from '../utils/purity';
 import { Button } from '../components/common/Button';
+import { CurrencyInput } from '../components/common/CurrencyInput';
+import { WeightInput } from '../components/common/WeightInput';
 import { api } from '../api';
 
 export interface MaterialBlock {
@@ -683,49 +685,35 @@ export const BulkLoanEntryView: React.FC<BulkLoanEntryViewProps> = ({ onLoanCrea
                 {/* 3. Combined Gross Weight */}
                 <div className="lg:col-span-1">
                   <label className="block text-slate-600 font-semibold mb-1">Combined Gross Wt</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.001"
-                      placeholder="0.00"
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-2.5 pr-6 py-2 font-mono font-bold text-slate-900"
-                      value={block.gross_weight_grams}
-                      onChange={(e) =>
-                        handleUpdateBlock(
-                          block.id,
-                          'gross_weight_grams',
-                          e.target.value === '' ? '' : Number(e.target.value)
-                        )
-                      }
-                    />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-[10px]">
-                      g
-                    </span>
-                  </div>
+                  <WeightInput
+                    placeholder="0.00"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-2 font-mono font-bold text-slate-900"
+                    value={block.gross_weight_grams}
+                    onChange={(val) =>
+                      handleUpdateBlock(
+                        block.id,
+                        'gross_weight_grams',
+                        val
+                      )
+                    }
+                  />
                 </div>
 
                 {/* 4. Combined Stone Weight */}
                 <div className="lg:col-span-1">
                   <label className="block text-slate-600 font-semibold mb-1">Stone / Tare Wt</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.001"
-                      placeholder="0.00"
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-2.5 pr-6 py-2 font-mono text-slate-700"
-                      value={block.stone_weight_grams}
-                      onChange={(e) =>
-                        handleUpdateBlock(
-                          block.id,
-                          'stone_weight_grams',
-                          e.target.value === '' ? '' : Number(e.target.value)
-                        )
-                      }
-                    />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-[10px]">
-                      g
-                    </span>
-                  </div>
+                  <WeightInput
+                    placeholder="0.00"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-2 font-mono text-slate-700"
+                    value={block.stone_weight_grams}
+                    onChange={(val) =>
+                      handleUpdateBlock(
+                        block.id,
+                        'stone_weight_grams',
+                        val
+                      )
+                    }
+                  />
                 </div>
 
                 {/* 5. Combined Net Weight (Auto) */}
@@ -739,17 +727,15 @@ export const BulkLoanEntryView: React.FC<BulkLoanEntryViewProps> = ({ onLoanCrea
                 {/* 6. Rate / Gram */}
                 <div className="lg:col-span-1">
                   <label className="block text-slate-600 font-semibold mb-1">Rate / Gram (₹)</label>
-                  <input
-                    type="number"
-                    step="1"
+                  <CurrencyInput
                     placeholder="Rate"
                     className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-2 font-mono font-bold text-slate-900"
                     value={block.rate_per_gram_rupees}
-                    onChange={(e) =>
+                    onChange={(val) =>
                       handleUpdateBlock(
                         block.id,
                         'rate_per_gram_rupees',
-                        e.target.value === '' ? '' : Number(e.target.value)
+                        val
                       )
                     }
                   />
@@ -759,16 +745,14 @@ export const BulkLoanEntryView: React.FC<BulkLoanEntryViewProps> = ({ onLoanCrea
                 <div className="lg:col-span-1">
                   <label className="block text-slate-500 font-semibold mb-1">Jewellery Valuation</label>
                   <div className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 font-mono font-bold text-slate-900 truncate">
-                    ₹{val.toLocaleString('en-IN')}
+                    {formatINR(Math.round(val * 100))}
                   </div>
                 </div>
 
                 {/* 8. Loan Amount Given */}
                 <div className="lg:col-span-1">
                   <label className="block text-slate-700 font-bold mb-1">Loan Amount Given (₹)</label>
-                  <input
-                    type="number"
-                    step="100"
+                  <CurrencyInput
                     placeholder="Amount"
                     className={`w-full border rounded-lg px-2.5 py-2 font-mono font-bold text-slate-900 ${
                       isBlockOverLtv
@@ -776,11 +760,11 @@ export const BulkLoanEntryView: React.FC<BulkLoanEntryViewProps> = ({ onLoanCrea
                         : 'bg-emerald-50/50 border-emerald-300 focus:border-emerald-500'
                     }`}
                     value={block.loan_amount_rupees}
-                    onChange={(e) =>
+                    onChange={(val) =>
                       handleUpdateBlock(
                         block.id,
                         'loan_amount_rupees',
-                        e.target.value === '' ? '' : Number(e.target.value)
+                        val
                       )
                     }
                   />

@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Lock,
   Clock,
+  UserPlus,
 } from 'lucide-react';
 import { Customer, MaterialType, PaymentMode, MetalRate, CustomCategory, MaterialTypeConfig } from '../types';
 import { formatINR, formatWeight, rupeesToPaise } from '../utils/currency';
@@ -20,6 +21,9 @@ import { formatItemCategory, formatItemMaterial } from '../utils/purity';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
+import { CurrencyInput } from '../components/common/CurrencyInput';
+import { WeightInput } from '../components/common/WeightInput';
+import { QuickCustomerModal } from '../components/customers/QuickCustomerModal';
 import { api } from '../api';
 
 export const PREDEFINED_CATEGORIES = [
@@ -71,6 +75,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [showQuickCustomerModal, setShowQuickCustomerModal] = useState<boolean>(false);
 
   // Loan Terms
   const [loanDate, setLoanDate] = useState<string>(getTodayISO());
@@ -371,6 +376,14 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
     }
     for (let i = 0; i < items.length; i++) {
       const itm = items[i];
+      if (!itm.gross_weight_grams || itm.gross_weight_grams <= 0) {
+        setError(`Please enter a valid gross weight for Item #${i + 1}.`);
+        return;
+      }
+      if (!itm.rate_per_gram_paise || itm.rate_per_gram_paise <= 0) {
+        setError(`Please enter a valid rate per gram for Item #${i + 1}.`);
+        return;
+      }
       if (itm.category === 'Other Article' && (!itm.custom_category || !itm.custom_category.trim())) {
         setError('Please enter the custom article category.');
         return;
@@ -493,11 +506,29 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <Users className="w-4 h-4 text-amber-500" /> 1. Select Borrower (Customer)
             </h3>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              icon={<UserPlus className="w-3.5 h-3.5" />}
+              onClick={() => setShowQuickCustomerModal(true)}
+            >
+              + New Customer
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block font-medium text-slate-700 mb-1">Select Registered Customer *</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block font-medium text-slate-700">Select Registered Customer *</label>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickCustomerModal(true)}
+                  className="text-amber-700 hover:text-amber-800 text-[11px] font-semibold flex items-center gap-1 hover:underline"
+                >
+                  <PlusCircle className="w-3 h-3" /> Quick Add Customer
+                </button>
+              </div>
               <select
                 required
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-amber-500"
@@ -697,14 +728,12 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                       <label className="block text-[11px] font-medium text-slate-600 mb-1">
                         Gross Weight (g) *
                       </label>
-                      <input
-                        type="number"
-                        step="0.001"
+                      <WeightInput
                         required
                         className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-mono"
                         value={item.gross_weight_grams}
-                        onChange={(e) =>
-                          handleItemChange(idx, 'gross_weight_grams', parseFloat(e.target.value) || 0)
+                        onChange={(val) =>
+                          handleItemChange(idx, 'gross_weight_grams', val)
                         }
                       />
                     </div>
@@ -713,13 +742,11 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                       <label className="block text-[11px] font-medium text-slate-600 mb-1">
                         Stone Wt (g)
                       </label>
-                      <input
-                        type="number"
-                        step="0.001"
+                      <WeightInput
                         className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-mono"
                         value={item.stone_weight_grams}
-                        onChange={(e) =>
-                          handleItemChange(idx, 'stone_weight_grams', parseFloat(e.target.value) || 0)
+                        onChange={(val) =>
+                          handleItemChange(idx, 'stone_weight_grams', val)
                         }
                       />
                     </div>
@@ -737,12 +764,12 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                       <label className="block text-[11px] font-medium text-slate-600 mb-1">
                         Rate (₹ / g)
                       </label>
-                      <input
-                        type="number"
+                      <CurrencyInput
+                        required
                         className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-mono"
                         value={item.rate_per_gram_paise / 100}
-                        onChange={(e) =>
-                          handleItemChange(idx, 'rate_per_gram_paise', (parseFloat(e.target.value) || 0) * 100)
+                        onChange={(val) =>
+                          handleItemChange(idx, 'rate_per_gram_paise', Math.round(val * 100))
                         }
                       />
                     </div>
@@ -894,12 +921,11 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
               <label className="block font-medium text-slate-700 mb-1">
                 Actual Loan Requested (₹) *
               </label>
-              <input
-                type="number"
+              <CurrencyInput
                 required
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold text-xs focus:outline-none focus:border-amber-500"
                 value={requestedPrincipalRupees}
-                onChange={(e) => setRequestedPrincipalRupees(parseFloat(e.target.value) || 0)}
+                onChange={(val) => setRequestedPrincipalRupees(val)}
               />
             </div>
 
@@ -999,11 +1025,10 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
 
             <div>
               <label className="block font-medium text-slate-700 mb-1">Processing Fee (₹)</label>
-              <input
-                type="number"
+              <CurrencyInput
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono"
                 value={processingFeeRupees}
-                onChange={(e) => setProcessingFeeRupees(parseFloat(e.target.value) || 0)}
+                onChange={(val) => setProcessingFeeRupees(val)}
               />
             </div>
           </div>
@@ -1064,6 +1089,24 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
           </div>
         </div>
       </Modal>
+
+      {/* Quick Customer Creation Modal */}
+      {showQuickCustomerModal && (
+        <QuickCustomerModal
+          isOpen={showQuickCustomerModal}
+          onClose={() => setShowQuickCustomerModal(false)}
+          existingCustomers={customersList}
+          onCustomerCreated={(newCust) => {
+            setCustomersList((prev) => [newCust, ...prev.filter((c) => c.id !== newCust.id)]);
+            setSelectedCustomerId(newCust.id);
+            setShowQuickCustomerModal(false);
+          }}
+          onSelectExistingCustomer={(cust) => {
+            setSelectedCustomerId(cust.id);
+            setShowQuickCustomerModal(false);
+          }}
+        />
+      )}
     </div>
   );
 };

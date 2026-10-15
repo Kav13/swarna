@@ -320,21 +320,19 @@ function registerIpcHandlers() {
                 sandbox: true,
             },
         });
+        const tempHtmlPath = path_1.default.join(electron_1.app.getPath('temp'), `receipt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.html`);
+        fs_1.default.writeFileSync(tempHtmlPath, htmlContent, 'utf8');
         try {
-            const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`;
-            await pdfWindow.loadURL(dataUrl);
-            // Wait a moment for DOM rendering and font layout
-            await new Promise((resolve) => setTimeout(resolve, 350));
+            await pdfWindow.loadFile(tempHtmlPath);
+            // Wait for fonts, layout, and rendering to complete
+            await pdfWindow.webContents.executeJavaScript('document.fonts ? document.fonts.ready : Promise.resolve()');
+            await new Promise((resolve) => setTimeout(resolve, 400));
             const pdfBuffer = await pdfWindow.webContents.printToPDF({
                 printBackground: true,
                 pageSize: 'A4',
                 preferCSSPageSize: true,
                 margins: {
-                    marginType: 'custom',
-                    top: 0.3,
-                    bottom: 0.3,
-                    left: 0.3,
-                    right: 0.3,
+                    marginType: 'none',
                 },
             });
             if (!pdfBuffer || pdfBuffer.length === 0) {
@@ -351,6 +349,12 @@ function registerIpcHandlers() {
             if (!pdfWindow.isDestroyed()) {
                 pdfWindow.destroy();
             }
+            try {
+                if (fs_1.default.existsSync(tempHtmlPath)) {
+                    fs_1.default.unlinkSync(tempHtmlPath);
+                }
+            }
+            catch { }
         }
     });
 }

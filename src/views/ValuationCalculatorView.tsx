@@ -3,6 +3,8 @@ import { Calculator, Coins, ArrowRight, CheckCircle2, AlertTriangle } from 'luci
 import { MaterialType, MetalRate } from '../types';
 import { formatINR, formatWeight } from '../utils/currency';
 import { Button } from '../components/common/Button';
+import { CurrencyInput } from '../components/common/CurrencyInput';
+import { WeightInput } from '../components/common/WeightInput';
 import { api } from '../api';
 
 interface ValuationCalculatorViewProps {
@@ -125,23 +127,19 @@ export const ValuationCalculatorView: React.FC<ValuationCalculatorViewProps> = (
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-medium text-slate-700 mb-1">Gross Weight (grams)</label>
-              <input
-                type="number"
-                step="0.001"
+              <WeightInput
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold"
                 value={grossWeight}
-                onChange={(e) => setGrossWeight(parseFloat(e.target.value) || 0)}
+                onChange={(val) => setGrossWeight(val)}
               />
             </div>
 
             <div>
               <label className="block font-medium text-slate-700 mb-1">Stone / Enamel Weight (g)</label>
-              <input
-                type="number"
-                step="0.001"
+              <WeightInput
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono"
                 value={stoneWeight}
-                onChange={(e) => setStoneWeight(parseFloat(e.target.value) || 0)}
+                onChange={(val) => setStoneWeight(val)}
               />
             </div>
           </div>
@@ -149,11 +147,10 @@ export const ValuationCalculatorView: React.FC<ValuationCalculatorViewProps> = (
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-medium text-slate-700 mb-1">Rate (₹ / gram)</label>
-              <input
-                type="number"
+              <CurrencyInput
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold"
                 value={ratePerGramRupees}
-                onChange={(e) => setRatePerGramRupees(parseFloat(e.target.value) || 0)}
+                onChange={(val) => setRatePerGramRupees(val)}
               />
             </div>
 
@@ -172,11 +169,10 @@ export const ValuationCalculatorView: React.FC<ValuationCalculatorViewProps> = (
             <label className="block font-medium text-slate-700 mb-1">
               Customer Desired Loan Amount (₹)
             </label>
-            <input
-              type="number"
+            <CurrencyInput
               className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold text-sm"
               value={requestedLoanRupees}
-              onChange={(e) => setRequestedLoanRupees(parseFloat(e.target.value) || 0)}
+              onChange={(val) => setRequestedLoanRupees(val)}
             />
           </div>
         </div>
