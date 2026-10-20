@@ -12,6 +12,7 @@ const auditService_1 = require("./auditService");
 const authService_1 = require("./authService");
 const categoryService_1 = require("./categoryService");
 const materialTypeService_1 = require("./materialTypeService");
+const interestService_1 = require("./interestService");
 class LoanService {
     /**
      * Creates a new loan with multi-item collateral and disbursement transaction inside an atomic DB transaction
@@ -262,10 +263,22 @@ class LoanService {
         params.push(filters?.limit || 50, filters?.offset || 0);
         const totalRow = db.prepare(countSql).get(...countParams);
         const rows = db.prepare(sql).all(...params);
-        const loans = rows.map((r) => ({
-            ...r,
-            is_override: Boolean(r.is_override),
-        }));
+        const today = new Date().toISOString().split('T')[0];
+        const loans = rows.map((r) => {
+            let accruedInterestPaise = r.interest_outstanding_paise || 0;
+            if (['ACTIVE', 'PARTIALLY_PAID', 'OVERDUE'].includes(r.status)) {
+                const intCalc = interestService_1.InterestService.calculateAccruedInterest(r, today);
+                accruedInterestPaise = intCalc.interest_accrued_paise;
+            }
+            return {
+                ...r,
+                is_override: Boolean(r.is_override),
+                accrued_interest_paise: accruedInterestPaise,
+                total_due_paise: (r.principal_outstanding_paise || 0) +
+                    accruedInterestPaise +
+                    (r.other_charges_paise || 0),
+            };
+        });
         return {
             loans,
             total: totalRow ? totalRow.count : 0,

@@ -44,7 +44,8 @@ export class InterestService {
     // Enforce minimum interest period only if time has elapsed
     const billableDays = actualElapsedDays === 0 ? 0 : Math.max(actualElapsedDays, minDays);
 
-    let interestAccruedPaise = loan.interest_outstanding_paise || 0;
+    const carriedInterestPaise = loan.interest_outstanding_paise || 0;
+    let newInterestPaise = 0;
     let billableMonths = +(billableDays / 30).toFixed(2);
 
     if (loan.interest_method === 'MONTHLY_SIMPLE') {
@@ -52,23 +53,25 @@ export class InterestService {
         // Rate is per month (e.g. 2% per month)
         // Daily rate = rate / 30
         const dailyRate = rate / 30 / 100;
-        interestAccruedPaise = Math.round(principal * dailyRate * billableDays);
+        newInterestPaise = Math.round(principal * dailyRate * billableDays);
       } else if (loan.interest_period === 'YEARLY') {
         // Rate is per year (e.g. 24% per year)
         const dailyRate = rate / 365 / 100;
-        interestAccruedPaise = Math.round(principal * dailyRate * billableDays);
+        newInterestPaise = Math.round(principal * dailyRate * billableDays);
       } else {
         // Daily rate
         const dailyRate = rate / 100;
-        interestAccruedPaise = Math.round(principal * dailyRate * billableDays);
+        newInterestPaise = Math.round(principal * dailyRate * billableDays);
       }
     } else if (loan.interest_method === 'DAILY_SIMPLE') {
       const dailyRate = (loan.interest_period === 'YEARLY' ? rate / 365 : rate / 30) / 100;
-      interestAccruedPaise = Math.round(principal * dailyRate * billableDays);
+      newInterestPaise = Math.round(principal * dailyRate * billableDays);
     } else if (loan.interest_method === 'FLAT') {
       // Flat agreed interest for the loan tenure
-      interestAccruedPaise = Math.round(principal * (rate / 100));
+      newInterestPaise = Math.round(principal * (rate / 100));
     }
+
+    const interestAccruedPaise = carriedInterestPaise + newInterestPaise;
 
     return {
       principal_paise: principal,

@@ -154,7 +154,7 @@ export const LoansListView: React.FC<LoansListViewProps> = ({
                       {formatINR(loan.principal_paise)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
-                      {formatINR(loan.principal_outstanding_paise + loan.interest_outstanding_paise)}
+                      {formatINR(loan.total_due_paise ?? (loan.principal_outstanding_paise + (loan.accrued_interest_paise ?? loan.interest_outstanding_paise) + (loan.other_charges_paise || 0)))}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <Badge status={loan.status} />

@@ -57,7 +57,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     );
   }
 
-  const totalOutstanding = stats.principal_outstanding_paise + stats.interest_outstanding_paise;
+  const totalOutstanding =
+    stats.total_dues_paise ??
+    (stats.principal_outstanding_paise +
+      stats.interest_outstanding_paise +
+      (stats.other_charges_outstanding_paise || 0));
   const totalCollateralWeight = stats.total_gold_weight_grams + stats.total_silver_weight_grams;
 
   return (
@@ -161,9 +165,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           <div className="text-2xl font-bold text-slate-900 mt-2 font-mono">
             {formatINR(totalOutstanding)}
           </div>
-          <div className="mt-3 pt-3 border-t border-slate-100 text-xs flex justify-between text-slate-500">
+          <div className="mt-3 pt-3 border-t border-slate-100 text-xs flex flex-wrap gap-x-3 gap-y-1 justify-between text-slate-500">
             <span>Principal: {formatINR(stats.principal_outstanding_paise, false)}</span>
-            <span>Interest: {formatINR(stats.interest_outstanding_paise, false)}</span>
+            <span>Accrued Interest: {formatINR(stats.interest_outstanding_paise, false)}</span>
+            {(stats.other_charges_outstanding_paise || 0) > 0 && (
+              <span>Other Charges: {formatINR(stats.other_charges_outstanding_paise || 0, false)}</span>
+            )}
           </div>
         </div>
 

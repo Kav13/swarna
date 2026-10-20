@@ -8,6 +8,7 @@ import {
   validateAadhaar,
   formatAadhaarDisplay,
 } from '../../utils/formatters';
+import { handleEnterKeyNavigation } from '../../utils/keyboardNavigation';
 
 interface QuickCustomerModalProps {
   isOpen: boolean;
@@ -100,18 +101,22 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
 
     if (!formData.full_name.trim()) {
       setError('Please enter the customer full name.');
+      document.getElementById('quick-customer-fullname')?.focus();
       return;
     }
     if (!validateIndianPhone(formData.phone)) {
       setError('Please provide a valid 10-digit mobile number (starting with 6, 7, 8, or 9).');
+      document.getElementById('quick-customer-phone')?.focus();
       return;
     }
     if (!validateAadhaar(formData.aadhaar_number)) {
       setError('Please provide a valid 12-digit Aadhaar number.');
+      document.getElementById('quick-customer-aadhaar')?.focus();
       return;
     }
     if (!formData.address.trim()) {
       setError('Address is required for KYC compliance.');
+      document.getElementById('quick-customer-address')?.focus();
       return;
     }
 
@@ -135,7 +140,7 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="+ Quick Customer Registration" maxWidth="2xl">
-      <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
+      <form onSubmit={handleSubmit} onKeyDown={handleEnterKeyNavigation} className="p-6 space-y-4 text-xs">
         {error && (
           <div className="p-3 rounded-lg bg-rose-50 border border-rose-300 text-rose-800 font-medium">
             {error}
@@ -177,6 +182,7 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
               Customer Full Name *
             </label>
             <input
+              id="quick-customer-fullname"
               type="text"
               required
               autoFocus
@@ -193,6 +199,7 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
             </label>
             <div className="relative">
               <input
+                id="quick-customer-phone"
                 type="tel"
                 required
                 placeholder="9876543210"
@@ -213,6 +220,7 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
             </label>
             <div className="relative">
               <input
+                id="quick-customer-aadhaar"
                 type="text"
                 required
                 placeholder="1234 5678 9012"
@@ -233,6 +241,7 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
               Alternate Contact Number
             </label>
             <input
+              id="quick-customer-altphone"
               type="tel"
               placeholder="Optional secondary phone / relative"
               className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 font-mono text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white"
@@ -247,6 +256,7 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
             Residential Address (KYC) *
           </label>
           <input
+            id="quick-customer-address"
             type="text"
             required
             placeholder="House/Shop no, street, building, landmark..."
@@ -260,6 +270,7 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
           <div>
             <label className="block font-semibold text-slate-700 mb-1">City</label>
             <input
+              id="quick-customer-city"
               type="text"
               className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white"
               value={formData.city}
@@ -270,6 +281,7 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
           <div>
             <label className="block font-semibold text-slate-700 mb-1">State</label>
             <input
+              id="quick-customer-state"
               type="text"
               className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white"
               value={formData.state}
@@ -280,6 +292,7 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Pincode</label>
             <input
+              id="quick-customer-pincode"
               type="text"
               maxLength={6}
               className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 font-mono text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white"
@@ -292,6 +305,7 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
         <div>
           <label className="block font-semibold text-slate-700 mb-1">Remarks / Reference</label>
           <input
+            id="quick-customer-remarks"
             type="text"
             placeholder="Optional reference person, identification mark..."
             className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white"
@@ -305,6 +319,7 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
             Cancel
           </Button>
           <Button
+            id="quick-customer-submit-btn"
             type="submit"
             variant="gold"
             size="sm"

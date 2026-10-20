@@ -1118,8 +1118,10 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                     <span>Total Outstanding Dues:</span>{' '}
                     <span className="font-mono font-black text-rose-700">
                       {formatINR(
-                        (data.total_principal_outstanding_paise || 0) +
-                          (data.total_interest_outstanding_paise || 0)
+                        data.total_dues_paise ??
+                          ((data.total_principal_outstanding_paise || 0) +
+                            (data.total_interest_outstanding_paise || 0) +
+                            (data.total_other_charges_paise || 0))
                       )}
                     </span>
                   </div>

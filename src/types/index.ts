@@ -106,6 +106,8 @@ export interface Loan {
   other_charges_paise: number;
   principal_outstanding_paise: number;
   interest_outstanding_paise: number;
+  accrued_interest_paise?: number;
+  total_due_paise?: number;
   status: LoanStatus;
   ltv_percent: number;
   total_valuation_paise: number;
@@ -180,6 +182,8 @@ export interface CustomerProfileData {
   closed_loans: Loan[];
   total_principal_outstanding_paise: number;
   total_interest_outstanding_paise: number;
+  total_other_charges_paise?: number;
+  total_dues_paise?: number;
   total_repayments_paise: number;
   pledged_items: JewelleryItem[];
   recent_transactions: LoanTransaction[];
@@ -258,6 +262,8 @@ export interface DashboardStats {
   active_loans_count: number;
   principal_outstanding_paise: number;
   interest_outstanding_paise: number;
+  other_charges_outstanding_paise?: number;
+  total_dues_paise?: number;
   total_disbursed_paise: number;
   total_collected_paise: number;
   closed_loans_count: number;

@@ -95,7 +95,10 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
 
   const { customer, active_loans, closed_loans, pledged_items, recent_transactions } = profile;
   const totalOutstanding =
-    profile.total_principal_outstanding_paise + profile.total_interest_outstanding_paise;
+    profile.total_dues_paise ??
+    (profile.total_principal_outstanding_paise +
+      profile.total_interest_outstanding_paise +
+      (profile.total_other_charges_paise || 0));
 
   return (
     <div className="p-8 space-y-6 max-w-7xl mx-auto">
@@ -194,7 +197,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
               {formatINR(totalOutstanding)}
             </div>
             <span className="text-[11px] text-slate-400">
-              Principal: {formatINR(profile.total_principal_outstanding_paise, false)}
+              Principal: {formatINR(profile.total_principal_outstanding_paise, false)} | Interest: {formatINR(profile.total_interest_outstanding_paise, false)}
             </span>
           </div>
 
@@ -295,7 +298,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                       {formatINR(l.principal_paise)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
-                      {formatINR(l.principal_outstanding_paise + l.interest_outstanding_paise)}
+                      {formatINR(l.total_due_paise ?? (l.principal_outstanding_paise + (l.accrued_interest_paise ?? l.interest_outstanding_paise) + (l.other_charges_paise || 0)))}
                     </td>
                     <td className="py-3 px-4">
                       {l.interest_rate_percent}% / {l.interest_period.toLowerCase()}

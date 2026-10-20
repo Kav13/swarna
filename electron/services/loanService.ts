@@ -7,6 +7,7 @@ import { AuditService } from './auditService';
 import { AuthService } from './authService';
 import { CategoryService } from './categoryService';
 import { MaterialTypeService } from './materialTypeService';
+import { InterestService } from './interestService';
 
 export interface CreateLoanInput {
   customer_id: string;
@@ -412,11 +413,23 @@ export class LoanService {
 
     const totalRow = db.prepare(countSql).get(...countParams) as { count: number };
     const rows = db.prepare(sql).all(...params) as any[];
-
-    const loans = rows.map((r) => ({
-      ...r,
-      is_override: Boolean(r.is_override),
-    }));
+    const today = new Date().toISOString().split('T')[0];
+    const loans = rows.map((r: any) => {
+      let accruedInterestPaise = r.interest_outstanding_paise || 0;
+      if (['ACTIVE', 'PARTIALLY_PAID', 'OVERDUE'].includes(r.status)) {
+        const intCalc = InterestService.calculateAccruedInterest(r, today);
+        accruedInterestPaise = intCalc.interest_accrued_paise;
+      }
+      return {
+        ...r,
+        is_override: Boolean(r.is_override),
+        accrued_interest_paise: accruedInterestPaise,
+        total_due_paise:
+          (r.principal_outstanding_paise || 0) +
+          accruedInterestPaise +
+          (r.other_charges_paise || 0),
+      };
+    });
 
     return {
       loans,

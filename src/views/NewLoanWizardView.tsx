@@ -24,6 +24,7 @@ import { Modal } from '../components/common/Modal';
 import { CurrencyInput } from '../components/common/CurrencyInput';
 import { WeightInput } from '../components/common/WeightInput';
 import { QuickCustomerModal } from '../components/customers/QuickCustomerModal';
+import { handleEnterKeyNavigation } from '../utils/keyboardNavigation';
 import { api } from '../api';
 
 export const PREDEFINED_CATEGORIES = [
@@ -352,6 +353,8 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
 
     if (!selectedCustomerId) {
       setError('Please select a borrower customer.');
+      const custSelect = document.getElementById('borrower-customer-select') || document.querySelector('select');
+      custSelect?.focus();
       return;
     }
     if (items.length === 0) {
@@ -360,10 +363,14 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
     }
     if (requestedPrincipalPaise <= 0) {
       setError('Loan amount must be greater than zero.');
+      const princInput = document.getElementById('loan-requested-principal') || document.querySelector('input[name="requested_principal"]');
+      princInput?.focus();
       return;
     }
     if (loanDate > getTodayISO()) {
       setError('Future loan dates are not permitted.');
+      const dateInput = document.getElementById('loan-date-input');
+      dateInput?.focus();
       return;
     }
     if (isBackdated && !canBackdate) {
@@ -372,20 +379,28 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
     }
     if (isBackdated && !backdateReason.trim()) {
       setError('Please provide an explicit justification reason for backdating this loan.');
+      const reasonInput = document.getElementById('backdate-reason-input');
+      reasonInput?.focus();
       return;
     }
     for (let i = 0; i < items.length; i++) {
       const itm = items[i];
+      if (itm.category === 'Other Article' && (!itm.custom_category || !itm.custom_category.trim())) {
+        setError('Please enter the custom article category.');
+        const customCatInput = document.getElementById(`item-custom-category-${i}`);
+        customCatInput?.focus();
+        return;
+      }
       if (!itm.gross_weight_grams || itm.gross_weight_grams <= 0) {
         setError(`Please enter a valid gross weight for Item #${i + 1}.`);
+        const grossInput = document.getElementById(`item-gross-weight-${i}`);
+        grossInput?.focus();
         return;
       }
       if (!itm.rate_per_gram_paise || itm.rate_per_gram_paise <= 0) {
         setError(`Please enter a valid rate per gram for Item #${i + 1}.`);
-        return;
-      }
-      if (itm.category === 'Other Article' && (!itm.custom_category || !itm.custom_category.trim())) {
-        setError('Please enter the custom article category.');
+        const rateInput = document.getElementById(`item-rate-${i}`);
+        rateInput?.focus();
         return;
       }
     }
@@ -396,6 +411,8 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
           2
         )}. Owner authorization required.`
       );
+      const authBtn = document.getElementById('authorize-override-btn') || document.getElementById('loan-requested-principal');
+      authBtn?.focus();
       return;
     }
 
@@ -499,7 +516,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
         </div>
       )}
 
-      <form onSubmit={handleSubmitLoan} className="space-y-6 text-xs">
+      <form onSubmit={handleSubmitLoan} onKeyDown={handleEnterKeyNavigation} className="space-y-6 text-xs">
         {/* Step 1: Customer Selection */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
@@ -530,6 +547,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                 </button>
               </div>
               <select
+                id="borrower-customer-select"
                 required
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-amber-500"
                 value={selectedCustomerId}
@@ -612,6 +630,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                         Category *
                       </label>
                       <select
+                        id={`item-category-${idx}`}
                         className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-medium text-slate-800"
                         value={item.category}
                         onChange={(e) => handleCategoryChange(idx, e.target.value)}
@@ -630,6 +649,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                           Custom Category *
                         </label>
                         <input
+                          id={`item-custom-category-${idx}`}
                           type="text"
                           required
                           list={`custom-cat-list-${idx}`}
@@ -651,6 +671,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                         Material
                       </label>
                       <select
+                        id={`item-material-${idx}`}
                         className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-semibold text-slate-800"
                         value={item.material}
                         onChange={(e) => handleMaterialChange(idx, e.target.value as MaterialType)}
@@ -666,6 +687,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                         Material Type
                       </label>
                       <select
+                        id={`item-material-type-${idx}`}
                         className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-semibold text-amber-900"
                         value={item.material_type || ''}
                         onChange={(e) => handleMaterialTypeChange(idx, e.target.value)}
@@ -687,6 +709,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                       </label>
                       <div className="relative">
                         <input
+                          id={`item-purity-${idx}`}
                           type="number"
                           step="0.01"
                           min="0"
@@ -714,6 +737,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                         Custom Material Type Label / Purity Name
                       </label>
                       <input
+                        id={`item-custom-purity-${idx}`}
                         type="text"
                         placeholder="e.g. 14K Gold, Silver 650, Rose Gold 18K..."
                         className="w-full bg-white border border-amber-300 rounded px-2.5 py-1.5 text-xs text-slate-800 font-medium"
@@ -729,6 +753,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                         Gross Weight (g) *
                       </label>
                       <WeightInput
+                        id={`item-gross-weight-${idx}`}
                         required
                         className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-mono"
                         value={item.gross_weight_grams}
@@ -743,6 +768,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                         Stone Wt (g)
                       </label>
                       <WeightInput
+                        id={`item-stone-weight-${idx}`}
                         className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-mono"
                         value={item.stone_weight_grams}
                         onChange={(val) =>
@@ -765,6 +791,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                         Rate (₹ / g)
                       </label>
                       <CurrencyInput
+                        id={`item-rate-${idx}`}
                         required
                         className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-mono"
                         value={item.rate_per_gram_paise / 100}
@@ -786,6 +813,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
 
                   <div>
                     <input
+                      id={`item-description-${idx}`}
                       type="text"
                       className="w-full bg-white border border-slate-300 rounded px-2.5 py-1 text-slate-700"
                       placeholder="Identification remarks / hallmarks / stones..."
@@ -903,6 +931,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                 Loan Date (Business Date) *
               </label>
               <input
+                id="loan-date-input"
                 type="date"
                 required
                 max={getTodayISO()}
@@ -922,6 +951,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                 Actual Loan Requested (₹) *
               </label>
               <CurrencyInput
+                id="loan-requested-principal"
                 required
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold text-xs focus:outline-none focus:border-amber-500"
                 value={requestedPrincipalRupees}
@@ -932,6 +962,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
             <div>
               <label className="block font-medium text-slate-700 mb-1">Interest Rate (% / Month) *</label>
               <input
+                id="loan-interest-rate"
                 type="number"
                 step="0.1"
                 required
@@ -944,6 +975,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
             <div>
               <label className="block font-medium text-slate-700 mb-1">Loan Tenure</label>
               <select
+                id="loan-tenure-select"
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-xs"
                 value={tenureMonths}
                 onChange={(e) => handleTenureChange(parseInt(e.target.value, 10))}
@@ -959,6 +991,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
             <div>
               <label className="block font-medium text-slate-700 mb-1">Maturity / Due Date</label>
               <input
+                id="loan-due-date"
                 type="date"
                 required
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-xs"
@@ -986,6 +1019,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
                   Reason for Backdating *
                 </label>
                 <input
+                  id="backdate-reason-input"
                   type="text"
                   required
                   placeholder="e.g. Entering historical manual register records, migration from physical ledger..."
@@ -1001,6 +1035,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
             <div>
               <label className="block font-medium text-slate-700 mb-1">Disbursement Payment Mode *</label>
               <select
+                id="loan-payment-mode"
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold"
                 value={paymentMode}
                 onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
@@ -1015,6 +1050,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
             <div>
               <label className="block font-medium text-slate-700 mb-1">Bank Reference / UPI UTR</label>
               <input
+                id="loan-disbursement-ref"
                 type="text"
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono"
                 placeholder="Optional transaction reference"
@@ -1026,6 +1062,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
             <div>
               <label className="block font-medium text-slate-700 mb-1">Processing Fee (₹)</label>
               <CurrencyInput
+                id="loan-processing-fee"
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono"
                 value={processingFeeRupees}
                 onChange={(val) => setProcessingFeeRupees(val)}
@@ -1041,6 +1078,7 @@ export const NewLoanWizardView: React.FC<NewLoanWizardViewProps> = ({
           </Button>
 
           <Button
+            id="submit-loan-btn"
             type="submit"
             variant="gold"
             size="lg"

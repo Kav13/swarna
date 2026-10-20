@@ -3,6 +3,7 @@ import { Customer, Loan, JewelleryItem, LoanTransaction, CustomerProfileData } f
 import { CryptoService } from './cryptoService';
 import { SettingService } from './settingService';
 import { AuditService } from './auditService';
+import { InterestService } from './interestService';
 
 export type { CustomerProfileData };
 
@@ -252,23 +253,58 @@ export class CustomerService {
     const totalRow = db.prepare(countSql).get(...countParams) as { count: number };
     const rows = db.prepare(sql).all(...params) as any[];
 
-    const customers: Customer[] = rows.map((row) => ({
-      id: row.id,
-      full_name: row.full_name,
-      phone: row.phone,
-      alternate_phone: row.alternate_phone || undefined,
-      aadhaar_last4: row.aadhaar_last4,
-      address: row.address,
-      city: row.city,
-      state: row.state,
-      pincode: row.pincode,
-      remarks: row.remarks || undefined,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-      created_by: row.created_by,
-      active_loans_count: row.active_loans_count || 0,
-      total_outstanding_paise: row.total_outstanding_paise || 0,
-    }));
+    const customerIds = rows.filter((r) => r.active_loans_count > 0).map((r) => r.id);
+    const activeLoansMap = new Map<string, Loan[]>();
+    const today = new Date().toISOString().split('T')[0];
+
+    if (customerIds.length > 0) {
+      const placeholders = customerIds.map(() => '?').join(',');
+      const activeLoans = db.prepare(`
+        SELECT * FROM loans
+        WHERE customer_id IN (${placeholders}) AND status IN ('ACTIVE', 'PARTIALLY_PAID', 'OVERDUE')
+      `).all(...customerIds) as Loan[];
+
+      for (const l of activeLoans) {
+        if (!activeLoansMap.has(l.customer_id)) {
+          activeLoansMap.set(l.customer_id, []);
+        }
+        activeLoansMap.get(l.customer_id)!.push(l);
+      }
+    }
+
+    const customers: Customer[] = rows.map((row) => {
+      let dynamicTotalOutstandingPaise = 0;
+      const cLoans = activeLoansMap.get(row.id);
+      if (cLoans && cLoans.length > 0) {
+        for (const l of cLoans) {
+          const calc = InterestService.calculateAccruedInterest(l, today);
+          dynamicTotalOutstandingPaise +=
+            (l.principal_outstanding_paise || 0) +
+            calc.interest_accrued_paise +
+            (l.other_charges_paise || 0);
+        }
+      } else {
+        dynamicTotalOutstandingPaise = row.total_outstanding_paise || 0;
+      }
+
+      return {
+        id: row.id,
+        full_name: row.full_name,
+        phone: row.phone,
+        alternate_phone: row.alternate_phone || undefined,
+        aadhaar_last4: row.aadhaar_last4,
+        address: row.address,
+        city: row.city,
+        state: row.state,
+        pincode: row.pincode,
+        remarks: row.remarks || undefined,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        created_by: row.created_by,
+        active_loans_count: row.active_loans_count || 0,
+        total_outstanding_paise: dynamicTotalOutstandingPaise,
+      };
+    });
 
     return {
       customers,
@@ -284,16 +320,32 @@ export class CustomerService {
     if (!customer) return null;
 
     const db = getDb();
+    const today = new Date().toISOString().split('T')[0];
 
     const loans = db.prepare(`
       SELECT * FROM loans WHERE customer_id = ? ORDER BY loan_date DESC
     `).all(customerId) as Loan[];
 
-    const activeLoans = loans.filter((l) => ['ACTIVE', 'PARTIALLY_PAID', 'OVERDUE'].includes(l.status));
+    const activeLoans = loans
+      .filter((l) => ['ACTIVE', 'PARTIALLY_PAID', 'OVERDUE'].includes(l.status))
+      .map((l) => {
+        const intCalc = InterestService.calculateAccruedInterest(l, today);
+        return {
+          ...l,
+          accrued_interest_paise: intCalc.interest_accrued_paise,
+          total_due_paise:
+            (l.principal_outstanding_paise || 0) +
+            intCalc.interest_accrued_paise +
+            (l.other_charges_paise || 0),
+        };
+      });
+
     const closedLoans = loans.filter((l) => l.status === 'CLOSED');
 
     const totalPrincipalOutstanding = activeLoans.reduce((sum, l) => sum + (l.principal_outstanding_paise || 0), 0);
-    const totalInterestOutstanding = activeLoans.reduce((sum, l) => sum + (l.interest_outstanding_paise || 0), 0);
+    const totalInterestOutstanding = activeLoans.reduce((sum, l) => sum + (l.accrued_interest_paise || 0), 0);
+    const totalOtherCharges = activeLoans.reduce((sum, l) => sum + (l.other_charges_paise || 0), 0);
+    const totalDues = totalPrincipalOutstanding + totalInterestOutstanding + totalOtherCharges;
 
     const repaymentsRow = db.prepare(`
       SELECT COALESCE(SUM(p.total_amount_paise), 0) as total_repayments
@@ -324,6 +376,8 @@ export class CustomerService {
       closed_loans: closedLoans,
       total_principal_outstanding_paise: totalPrincipalOutstanding,
       total_interest_outstanding_paise: totalInterestOutstanding,
+      total_other_charges_paise: totalOtherCharges,
+      total_dues_paise: totalDues,
       total_repayments_paise: repaymentsRow ? repaymentsRow.total_repayments : 0,
       pledged_items: pledgedItems,
       recent_transactions: recentTx,

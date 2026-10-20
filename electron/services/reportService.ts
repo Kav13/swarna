@@ -1,5 +1,6 @@
 import { getDb } from '../database/connection';
 import { DashboardStats, AuditLog, Loan, Customer } from '../types';
+import { InterestService } from './interestService';
 
 export class ReportService {
   /**
@@ -16,13 +17,28 @@ export class ReportService {
         COUNT(CASE WHEN status = 'OVERDUE' THEN 1 END) as overdue_loans_count,
         COUNT(CASE WHEN status = 'CLOSED' THEN 1 END) as closed_loans_count,
         COALESCE(SUM(CASE WHEN status IN ('ACTIVE', 'PARTIALLY_PAID', 'OVERDUE') THEN principal_outstanding_paise ELSE 0 END), 0) as principal_outstanding,
-        COALESCE(SUM(CASE WHEN status IN ('ACTIVE', 'PARTIALLY_PAID', 'OVERDUE') THEN interest_outstanding_paise ELSE 0 END), 0) as interest_outstanding,
+        COALESCE(SUM(CASE WHEN status IN ('ACTIVE', 'PARTIALLY_PAID', 'OVERDUE') THEN other_charges_paise ELSE 0 END), 0) as other_charges_outstanding,
         COALESCE(SUM(principal_paise), 0) as total_disbursed,
         COUNT(CASE WHEN status IN ('ACTIVE', 'PARTIALLY_PAID') AND due_date = ? THEN 1 END) as due_today,
         COUNT(CASE WHEN status IN ('ACTIVE', 'PARTIALLY_PAID') AND due_date > ? AND due_date <= date(?, '+7 days') THEN 1 END) as due_7d,
         COUNT(CASE WHEN status IN ('ACTIVE', 'PARTIALLY_PAID') AND due_date > ? AND due_date <= date(?, '+30 days') THEN 1 END) as due_30d
       FROM loans
     `).get(today, today, today, today, today) as any;
+
+    // Calculate accrued unpaid interest & charges across all active loans
+    const activeLoans = db.prepare(`
+      SELECT * FROM loans WHERE status IN ('ACTIVE', 'PARTIALLY_PAID', 'OVERDUE')
+    `).all() as Loan[];
+
+    let dynamicAccruedInterestPaise = 0;
+    for (const l of activeLoans) {
+      const calc = InterestService.calculateAccruedInterest(l, today);
+      dynamicAccruedInterestPaise += calc.interest_accrued_paise;
+    }
+
+    const principalOutstanding = loansRow?.principal_outstanding || 0;
+    const otherChargesOutstanding = loansRow?.other_charges_outstanding || 0;
+    const totalDues = principalOutstanding + dynamicAccruedInterestPaise + otherChargesOutstanding;
 
     // Total repayments collected
     const repaymentsRow = db.prepare(`
@@ -52,8 +68,10 @@ export class ReportService {
 
     return {
       active_loans_count: (loansRow?.active_loans_count || 0) + (loansRow?.overdue_loans_count || 0),
-      principal_outstanding_paise: loansRow?.principal_outstanding || 0,
-      interest_outstanding_paise: loansRow?.interest_outstanding || 0,
+      principal_outstanding_paise: principalOutstanding,
+      interest_outstanding_paise: dynamicAccruedInterestPaise,
+      other_charges_outstanding_paise: otherChargesOutstanding,
+      total_dues_paise: totalDues,
       total_disbursed_paise: loansRow?.total_disbursed || 0,
       total_collected_paise: repaymentsRow?.total_collected || 0,
       closed_loans_count: loansRow?.closed_loans_count || 0,
@@ -73,22 +91,28 @@ export class ReportService {
    */
   static exportReportToCSV(reportType: 'LOANS' | 'PAYMENTS' | 'CUSTOMERS' | 'COLLATERAL'): string {
     const db = getDb();
+    const today = new Date().toISOString().split('T')[0];
 
     if (reportType === 'LOANS') {
       const rows = db.prepare(`
-        SELECT l.id, c.full_name as customer, l.loan_date, l.due_date,
-               l.principal_paise / 100.0 as principal_inr,
-               l.interest_rate_percent, l.status,
-               l.principal_outstanding_paise / 100.0 as principal_outstanding_inr
+        SELECT l.*, c.full_name as customer
         FROM loans l
         JOIN customers c ON l.customer_id = c.id
         ORDER BY l.loan_date DESC
       `).all() as any[];
 
-      const headers = ['Loan ID', 'Customer', 'Loan Date', 'Due Date', 'Principal (INR)', 'Rate %', 'Status', 'Outstanding (INR)'];
+      const headers = ['Loan ID', 'Customer', 'Loan Date', 'Due Date', 'Principal (INR)', 'Rate %', 'Status', 'Principal Outstanding (INR)', 'Accrued Interest (INR)', 'Total Outstanding (INR)'];
       const csvLines = [headers.join(',')];
       for (const r of rows) {
-        csvLines.push([`"${r.id}"`, `"${r.customer}"`, `"${r.loan_date}"`, `"${r.due_date}"`, r.principal_inr, r.interest_rate_percent, `"${r.status}"`, r.principal_outstanding_inr].join(','));
+        let accruedInterestPaise = 0;
+        if (['ACTIVE', 'PARTIALLY_PAID', 'OVERDUE'].includes(r.status)) {
+          const calc = InterestService.calculateAccruedInterest(r, today);
+          accruedInterestPaise = calc.interest_accrued_paise;
+        }
+        const principalOutInr = (r.principal_outstanding_paise / 100.0).toFixed(2);
+        const interestOutInr = (accruedInterestPaise / 100.0).toFixed(2);
+        const totalOutInr = ((r.principal_outstanding_paise + accruedInterestPaise + (r.other_charges_paise || 0)) / 100.0).toFixed(2);
+        csvLines.push([`"${r.id}"`, `"${r.customer}"`, `"${r.loan_date}"`, `"${r.due_date}"`, (r.principal_paise / 100.0).toFixed(2), r.interest_rate_percent, `"${r.status}"`, principalOutInr, interestOutInr, totalOutInr].join(','));
       }
       return csvLines.join('\n');
     }
